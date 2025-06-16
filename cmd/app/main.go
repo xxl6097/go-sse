@@ -38,7 +38,7 @@ func main() {
 	//broker.StreamResponse("你好，你是谁，从哪里来，年龄，性别，姓名，一一报来！", time.Second)
 	//http.Handle("/events", broker)
 
-	serv := sse.NewSseServer(nil)
+	serv := sse.NewSseServer(NewSSEServer())
 	http.HandleFunc("/events", serv.Handler())
 
 	// 提供静态文件服务

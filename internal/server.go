@@ -28,7 +28,7 @@ func (s *Server) Handler() http.HandlerFunc {
 
 // NewServer 创建一个新的 SSE 服务器实例
 func NewServer(s iface.OnSseServer) iface.ISseServer {
-	return &Server{
+	this := Server{
 		isse:            s,
 		clients:         make(map[string]*iface.Client),
 		subscribeChan:   make(chan *iface.Client),
@@ -37,12 +37,14 @@ func NewServer(s iface.OnSseServer) iface.ISseServer {
 		p2pChan:         make(chan iface.Event),
 		groupChan:       make(chan iface.Event),
 	}
+	go this.eventLoop()
+	return &this
 }
 
-// Start 启动 SSE 服务器
-func (s *Server) Start() {
-	go s.eventLoop()
-}
+//// Start 启动 SSE 服务器
+//func (s *Server) Start() {
+//	go s.eventLoop()
+//}
 
 // SubscribeHandler 返回一个处理客户端订阅的 HTTP 处理器
 func (s *Server) SubscribeHandler() http.HandlerFunc {
@@ -88,6 +90,8 @@ func (s *Server) SubscribeHandler() http.HandlerFunc {
 			http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
 			return
 		}
+
+		s.sendHeartbeat(w, flusher)
 
 		// 发送心跳以保持连接活跃
 		ticker := time.NewTicker(15 * time.Second)
@@ -139,7 +143,7 @@ func (s *Server) eventLoop() {
 				s.isse.OnRegister(client)
 			}
 			s.clientsMutex.Unlock()
-			log.Printf("iface.Client %s connected", client.ID)
+			//log.Printf("iface.Client %s connected", client.ID)
 
 		case clientID := <-s.unsubscribeChan:
 			s.clientsMutex.Lock()
@@ -151,7 +155,7 @@ func (s *Server) eventLoop() {
 				delete(s.clients, clientID)
 			}
 			s.clientsMutex.Unlock()
-			log.Printf("iface.Client %s disconnected", clientID)
+			//log.Printf("iface.Client %s disconnected", clientID)
 
 		case event := <-s.broadcastChan:
 			s.clientsMutex.RLock()
