@@ -15,8 +15,10 @@ type Server struct {
 	clients         map[string]*iface.Client
 	clientsMutex    sync.RWMutex
 	subscribeChan   chan *iface.Client
+	invalidateFn    func(*http.Request) (bool, string)
+	registerFn      func(*iface.Client)
+	unregisterFn    func(*iface.Client)
 	unsubscribeChan chan string
-	isse            iface.OnSseServer
 	broadcastChan   chan iface.Event
 	p2pChan         chan iface.Event
 	groupChan       chan iface.Event
@@ -27,24 +29,29 @@ func (s *Server) Handler() http.HandlerFunc {
 }
 
 // NewServer 创建一个新的 SSE 服务器实例
-func NewServer(s iface.OnSseServer) iface.ISseServer {
+func NewServer() *Server {
 	this := Server{
-		isse:            s,
 		clients:         make(map[string]*iface.Client),
 		subscribeChan:   make(chan *iface.Client),
 		unsubscribeChan: make(chan string),
 		broadcastChan:   make(chan iface.Event),
 		p2pChan:         make(chan iface.Event),
 		groupChan:       make(chan iface.Event),
+		registerFn:      nil,
+		invalidateFn:    nil,
+		unregisterFn:    nil,
 	}
 	go this.eventLoop()
 	return &this
 }
 
-//// Start 启动 SSE 服务器
-//func (s *Server) Start() {
-//	go s.eventLoop()
-//}
+func (s *Server) Done() iface.ISseServer {
+	return s
+}
+
+func (s *Server) GetClients() map[string]*iface.Client {
+	return s.clients
+}
 
 // SubscribeHandler 返回一个处理客户端订阅的 HTTP 处理器
 func (s *Server) SubscribeHandler() http.HandlerFunc {
@@ -57,8 +64,8 @@ func (s *Server) SubscribeHandler() http.HandlerFunc {
 
 		id := generateClientID()
 		// 校验连接合法性
-		if s.isse != nil {
-			ok, tempID := s.isse.Invalidate(r)
+		if s.invalidateFn != nil {
+			ok, tempID := s.invalidateFn(r)
 			if !ok {
 				http.Error(w, "Streaming Unauthorized!", http.StatusUnauthorized)
 				return
@@ -70,7 +77,7 @@ func (s *Server) SubscribeHandler() http.HandlerFunc {
 		// 创建新客户端
 		client := &iface.Client{
 			ID:        id,
-			GroupID:   r.Header.Get("Sse-iface.Event-GroupID"),
+			GroupID:   r.Header.Get("Sse-Event-GroupID"),
 			SendChan:  make(chan iface.Event, 100),
 			CloseChan: make(chan struct{}),
 		}
@@ -117,6 +124,21 @@ func (s *Server) SubscribeHandler() http.HandlerFunc {
 	}
 }
 
+func (s *Server) InvalidateFun(fn func(*http.Request) (bool, string)) *Server {
+	s.invalidateFn = fn
+	return s
+}
+
+func (s *Server) Register(fn func(*iface.Client)) *Server {
+	s.registerFn = fn
+	return s
+}
+
+func (s *Server) UnRegister(fn func(*iface.Client)) *Server {
+	s.unregisterFn = fn
+	return s
+}
+
 // Broadcast 向所有客户端广播事件
 func (s *Server) Broadcast(event iface.Event) {
 	s.broadcastChan <- event
@@ -139,8 +161,8 @@ func (s *Server) eventLoop() {
 		case client := <-s.subscribeChan:
 			s.clientsMutex.Lock()
 			s.clients[client.ID] = client
-			if s.isse != nil {
-				s.isse.OnRegister(client)
+			if s.registerFn != nil {
+				s.registerFn(client)
 			}
 			s.clientsMutex.Unlock()
 			//log.Printf("iface.Client %s connected", client.ID)
@@ -148,8 +170,8 @@ func (s *Server) eventLoop() {
 		case clientID := <-s.unsubscribeChan:
 			s.clientsMutex.Lock()
 			if client, exists := s.clients[clientID]; exists {
-				if s.isse != nil {
-					s.isse.OnUnRegister(client)
+				if s.unregisterFn != nil {
+					s.unregisterFn(client)
 				}
 				close(client.SendChan)
 				delete(s.clients, clientID)

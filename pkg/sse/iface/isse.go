@@ -11,19 +11,20 @@ type Event struct {
 
 // Client 表示一个客户端连接
 type Client struct {
-	ID        string
-	GroupID   string
-	SendChan  chan Event
-	CloseChan chan struct{}
+	ID        string        `json:"id"`
+	GroupID   string        `json:"groupId"`
+	SendChan  chan Event    `json:"-"`
+	CloseChan chan struct{} `json:"-"`
 }
 
-type OnSseServer interface {
-	OnRegister(*Client)
-	OnUnRegister(*Client)
-	Invalidate(*http.Request) (bool, string)
-}
+//type OnSseServer interface {
+//	OnRegister(*Client)
+//	OnUnRegister(*Client)
+//	Invalidate(*http.Request) (bool, string)
+//}
 
 type ISseServer interface {
+	GetClients() map[string]*Client
 	Broadcast(event Event)
 	Send(event Event)
 	SendToGroup(event Event)

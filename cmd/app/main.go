@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -38,7 +39,13 @@ func main() {
 	//broker.StreamResponse("你好，你是谁，从哪里来，年龄，性别，姓名，一一报来！", time.Second)
 	//http.Handle("/events", broker)
 
-	serv := sse.NewSseServer(NewSSEServer())
+	serv := sse.New().
+		InvalidateFun(func(request *http.Request) (bool, string) {
+			return true, time.Now().Format("20060102150405.999999999")
+		}).
+		Register(nil).
+		UnRegister(nil).
+		Done()
 	http.HandleFunc("/events", serv.Handler())
 
 	// 提供静态文件服务
