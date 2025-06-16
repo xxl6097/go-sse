@@ -10,27 +10,13 @@ import (
 	"time"
 )
 
-type OnSseServer interface {
-	OnRegister(*Client)
-	OnUnRegister(*Client)
-	Invalidate(*http.Request) (bool, string)
-}
-
-// Client 表示一个客户端连接
-type Client struct {
-	ID        string
-	GroupID   string
-	SendChan  chan iface.Event
-	CloseChan chan struct{}
-}
-
 // Server 管理所有 SSE 连接和事件广播
 type Server struct {
-	clients         map[string]*Client
+	clients         map[string]*iface.Client
 	clientsMutex    sync.RWMutex
-	subscribeChan   chan *Client
+	subscribeChan   chan *iface.Client
 	unsubscribeChan chan string
-	isse            OnSseServer
+	isse            iface.OnSseServer
 	broadcastChan   chan iface.Event
 	p2pChan         chan iface.Event
 	groupChan       chan iface.Event
@@ -41,11 +27,11 @@ func (s *Server) Handler() http.HandlerFunc {
 }
 
 // NewServer 创建一个新的 SSE 服务器实例
-func NewServer(s OnSseServer) iface.ISseServer {
+func NewServer(s iface.OnSseServer) iface.ISseServer {
 	return &Server{
 		isse:            s,
-		clients:         make(map[string]*Client),
-		subscribeChan:   make(chan *Client),
+		clients:         make(map[string]*iface.Client),
+		subscribeChan:   make(chan *iface.Client),
 		unsubscribeChan: make(chan string),
 		broadcastChan:   make(chan iface.Event),
 		p2pChan:         make(chan iface.Event),
@@ -80,7 +66,7 @@ func (s *Server) SubscribeHandler() http.HandlerFunc {
 		}
 
 		// 创建新客户端
-		client := &Client{
+		client := &iface.Client{
 			ID:        id,
 			GroupID:   r.Header.Get("Sse-iface.Event-GroupID"),
 			SendChan:  make(chan iface.Event, 100),
@@ -153,7 +139,7 @@ func (s *Server) eventLoop() {
 				s.isse.OnRegister(client)
 			}
 			s.clientsMutex.Unlock()
-			log.Printf("Client %s connected", client.ID)
+			log.Printf("iface.Client %s connected", client.ID)
 
 		case clientID := <-s.unsubscribeChan:
 			s.clientsMutex.Lock()
@@ -165,7 +151,7 @@ func (s *Server) eventLoop() {
 				delete(s.clients, clientID)
 			}
 			s.clientsMutex.Unlock()
-			log.Printf("Client %s disconnected", clientID)
+			log.Printf("iface.Client %s disconnected", clientID)
 
 		case event := <-s.broadcastChan:
 			s.clientsMutex.RLock()
@@ -174,7 +160,7 @@ func (s *Server) eventLoop() {
 				case client.SendChan <- event:
 				default:
 					// 客户端缓冲区已满，考虑关闭连接或实现退避策略
-					log.Printf("Client %s buffer full, dropping event", client.ID)
+					log.Printf("iface.Client %s buffer full, dropping event", client.ID)
 				}
 			}
 			s.clientsMutex.RUnlock()
@@ -186,7 +172,7 @@ func (s *Server) eventLoop() {
 			case client.SendChan <- event:
 			default:
 				// 客户端缓冲区已满，考虑关闭连接或实现退避策略
-				log.Printf("Client %s buffer full, dropping event", client.ID)
+				log.Printf("iface.Client %s buffer full, dropping event", client.ID)
 			}
 			s.clientsMutex.RUnlock()
 
@@ -200,7 +186,7 @@ func (s *Server) eventLoop() {
 				case client.SendChan <- event:
 				default:
 					// 客户端缓冲区已满，考虑关闭连接或实现退避策略
-					log.Printf("Client %s buffer full, dropping event", client.ID)
+					log.Printf("iface.Client %s buffer full, dropping event", client.ID)
 				}
 			}
 			s.clientsMutex.RUnlock()

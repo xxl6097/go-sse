@@ -9,6 +9,20 @@ type Event struct {
 	Data  string
 }
 
+// Client 表示一个客户端连接
+type Client struct {
+	ID        string
+	GroupID   string
+	SendChan  chan Event
+	CloseChan chan struct{}
+}
+
+type OnSseServer interface {
+	OnRegister(*Client)
+	OnUnRegister(*Client)
+	Invalidate(*http.Request) (bool, string)
+}
+
 type ISseServer interface {
 	Broadcast(event Event)
 	Send(event Event)
