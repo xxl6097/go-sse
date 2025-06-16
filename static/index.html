@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SSE Client Example</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        #messages { margin-top: 20px; border: 1px solid #ccc; padding: 10px; min-height: 200px; }
+        .message { margin-bottom: 10px; padding: 5px; background-color: #f0f0f0; }
+        .timestamp { font-size: 0.8em; color: #666; }
+    </style>
+</head>
+<body>
+<h1>SSE Client Example</h1>
+<div id="status">Connecting...</div>
+<div id="messages"></div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const status = document.getElementById('status');
+        const messages = document.getElementById('messages');
+        let lastEventId = 0;
+        // 创建 EventSource 实例
+        const eventSource = new EventSource('http://localhost:8080/events', {
+            headers: { 'Last-Event-ID': lastEventId }
+        });
+
+        // 连接成功
+        eventSource.onopen = function() {
+            status.textContent = 'Connected';
+            status.style.color = 'green';
+        };
+
+        // 接收到消息
+        eventSource.onmessage = function(event) {
+            console.log('onmessage',event.data)
+            lastEventId = e.lastEventId;
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+
+            const timestampSpan = document.createElement('span');
+            timestampSpan.className = 'timestamp';
+            timestampSpan.textContent = new Date().toLocaleTimeString();
+
+            const dataSpan = document.createElement('span');
+            dataSpan.textContent = event.data;
+
+            messageDiv.appendChild(timestampSpan);
+            messageDiv.appendChild(document.createElement('br'));
+            messageDiv.appendChild(dataSpan);
+
+            messages.appendChild(messageDiv);
+            messages.scrollTop = messages.scrollHeight;
+        };
+
+        // 错误处理
+        eventSource.onerror = function(error) {
+            status.textContent = 'Connection Error';
+            status.style.color = 'red';
+
+            console.error('EventSource failed:', error);
+
+            // 尝试重新连接
+            // setTimeout(function() {
+            //     eventSource.close();
+            //     const newEventSource = new EventSource('http://localhost:8080/events');
+            //     // 重新绑定事件处理函数
+            //     newEventSource.onopen = eventSource.onopen;
+            //     newEventSource.onmessage = eventSource.onmessage;
+            //     newEventSource.onerror = eventSource.onerror;
+            //     eventSource = newEventSource;
+            // }, 3000);
+        };
+
+        // 自定义事件处理
+        eventSource.addEventListener('custom-event', function(event) {
+            console.log('Custom event received:', event.data);
+        });
+
+        // 页面卸载时关闭连接
+        window.addEventListener('beforeunload', function() {
+            eventSource.close();
+        });
+    });
+</script>
+</body>
+</html>
