@@ -5,6 +5,6 @@ import (
 	"github.com/xxl6097/go-sse/pkg/sse/iface"
 )
 
-func NewSseServer(callback internal.OnSseServer) iface.ISseServer {
+func NewSseServer(callback iface.OnSseServer) iface.ISseServer {
 	return internal.NewServer(callback)
 }
