@@ -5,6 +5,7 @@ import (
 	"github.com/xxl6097/go-sse/pkg/sse/iface"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -15,9 +16,9 @@ type Server struct {
 	clients         map[string]*iface.Client
 	clientsMutex    sync.RWMutex
 	subscribeChan   chan *iface.Client
-	invalidateFn    func(*http.Request) (bool, string)
-	registerFn      func(*iface.Client)
-	unregisterFn    func(*iface.Client)
+	invalidateFn    iface.InvalidateType
+	registerFn      iface.ClientType
+	unregisterFn    iface.ClientType
 	unsubscribeChan chan string
 	broadcastChan   chan iface.Event
 	p2pChan         chan iface.Event
@@ -41,11 +42,11 @@ func NewServer() *Server {
 		invalidateFn:    nil,
 		unregisterFn:    nil,
 	}
-	go this.eventLoop()
 	return &this
 }
 
 func (s *Server) Done() iface.ISseServer {
+	go s.eventLoop()
 	return s
 }
 
@@ -124,17 +125,17 @@ func (s *Server) SubscribeHandler() http.HandlerFunc {
 	}
 }
 
-func (s *Server) InvalidateFun(fn func(*http.Request) (bool, string)) *Server {
+func (s *Server) InvalidateFun(fn iface.InvalidateType) *Server {
 	s.invalidateFn = fn
 	return s
 }
 
-func (s *Server) Register(fn func(*iface.Client)) *Server {
+func (s *Server) Register(fn iface.ClientType) *Server {
 	s.registerFn = fn
 	return s
 }
 
-func (s *Server) UnRegister(fn func(*iface.Client)) *Server {
+func (s *Server) UnRegister(fn iface.ClientType) *Server {
 	s.unregisterFn = fn
 	return s
 }
@@ -162,7 +163,7 @@ func (s *Server) eventLoop() {
 			s.clientsMutex.Lock()
 			s.clients[client.ID] = client
 			if s.registerFn != nil {
-				s.registerFn(client)
+				s.registerFn(s, client)
 			}
 			s.clientsMutex.Unlock()
 			//log.Printf("iface.Client %s connected", client.ID)
@@ -171,7 +172,7 @@ func (s *Server) eventLoop() {
 			s.clientsMutex.Lock()
 			if client, exists := s.clients[clientID]; exists {
 				if s.unregisterFn != nil {
-					s.unregisterFn(client)
+					s.unregisterFn(s, client)
 				}
 				close(client.SendChan)
 				delete(s.clients, clientID)
@@ -228,7 +229,8 @@ func (s *Server) sendEvent(w http.ResponseWriter, flusher http.Flusher, event if
 		log.Printf("Error marshaling event: %v", e)
 		return
 	}
-	if _, err := w.Write(data); err != nil {
+
+	if _, err := w.Write([]byte("data: " + string(data) + "\n\n")); err != nil {
 		log.Printf("Write error: %v", err)
 		return
 	}
@@ -242,6 +244,21 @@ func (s *Server) sendHeartbeat(w http.ResponseWriter, flusher http.Flusher) {
 		return
 	}
 	flusher.Flush()
+}
+
+func (b *Server) Stream(response string, interval time.Duration) {
+	go func() {
+		for i, char := range response {
+			event := iface.Event{
+				Data:  string(char),
+				ID:    strconv.Itoa(i + 1),
+				Event: "message",
+			}
+			b.Broadcast(event)
+			time.Sleep(interval)
+		}
+		b.Broadcast(iface.Event{Event: "end"})
+	}()
 }
 
 // generateClientID 生成唯一的客户端 ID

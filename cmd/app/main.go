@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"github.com/xxl6097/go-sse/pkg/sse"
+	"github.com/xxl6097/go-sse/pkg/sse/iface"
 	"log"
 	"net/http"
 	"os"
@@ -38,16 +39,17 @@ func main() {
 	//broker := interval.NewAdvancedBroker(5)
 	//broker.StreamResponse("你好，你是谁，从哪里来，年龄，性别，姓名，一一报来！", time.Second)
 	//http.Handle("/events", broker)
-
+	//serv.Stream("内置丰富的开发模板，包括前后端开发所需的所有工具，如pycharm、idea、navicat、vscode以及XTerminal远程桌面管理工具等模板，用户可以轻松部署和管理各种应用程序和工具", time.Microsecond*1000)
 	serv := sse.New().
 		InvalidateFun(func(request *http.Request) (bool, string) {
 			return true, time.Now().Format("20060102150405.999999999")
 		}).
-		Register(nil).
+		Register(func(server iface.ISseServer, client *iface.Client) {
+			server.Stream("内置丰富的开发模板，包括前后端开发所需的所有工具，如pycharm、idea、navicat、vscode以及XTerminal远程桌面管理工具等模板，用户可以轻松部署和管理各种应用程序和工具", time.Millisecond*500)
+		}).
 		UnRegister(nil).
 		Done()
 	http.HandleFunc("/events", serv.Handler())
-
 	// 提供静态文件服务
 	fs := http.FileServer(http.Dir("./static"))
 	http.Handle("/", fs)

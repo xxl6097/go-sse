@@ -33,7 +33,6 @@
         // 接收到消息
         eventSource.onmessage = function(event) {
             console.log('onmessage',event.data)
-            lastEventId = e.lastEventId;
             const messageDiv = document.createElement('div');
             messageDiv.className = 'message';
 
@@ -41,8 +40,9 @@
             timestampSpan.className = 'timestamp';
             timestampSpan.textContent = new Date().toLocaleTimeString();
 
+            const json = JSON.parse(event.data)
             const dataSpan = document.createElement('span');
-            dataSpan.textContent = event.data;
+            dataSpan.textContent = json.data;
 
             messageDiv.appendChild(timestampSpan);
             messageDiv.appendChild(document.createElement('br'));

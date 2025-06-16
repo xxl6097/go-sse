@@ -1,12 +1,18 @@
 package iface
 
-import "net/http"
+import (
+	"net/http"
+	"time"
+)
+
+type InvalidateType func(*http.Request) (bool, string)
+type ClientType func(ISseServer, *Client)
 
 // Event 表示一个 SSE 事件
 type Event struct {
-	ID    string
-	Event string
-	Data  string
+	ID    string `json:"id"`
+	Event string `json:"event"`
+	Data  string `json:"data"`
 }
 
 // Client 表示一个客户端连接
@@ -25,6 +31,7 @@ type Client struct {
 
 type ISseServer interface {
 	GetClients() map[string]*Client
+	Stream(response string, interval time.Duration)
 	Broadcast(event Event)
 	Send(event Event)
 	SendToGroup(event Event)

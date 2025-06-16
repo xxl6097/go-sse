@@ -3,7 +3,6 @@ package sse
 import (
 	"github.com/xxl6097/go-sse/internal"
 	"github.com/xxl6097/go-sse/pkg/sse/iface"
-	"net/http"
 )
 
 type sseserver struct {
@@ -16,21 +15,21 @@ func New() *sseserver {
 	}
 }
 
-func (s *sseserver) InvalidateFun(fn func(*http.Request) (bool, string)) *sseserver {
+func (s *sseserver) InvalidateFun(fn iface.InvalidateType) *sseserver {
 	s.server.InvalidateFun(fn)
 	return s
 }
 
-func (s *sseserver) Register(fn func(*iface.Client)) *sseserver {
+func (s *sseserver) Register(fn iface.ClientType) *sseserver {
 	s.server.Register(fn)
 	return s
 }
 
-func (s *sseserver) UnRegister(fn func(*iface.Client)) *sseserver {
+func (s *sseserver) UnRegister(fn iface.ClientType) *sseserver {
 	s.server.UnRegister(fn)
 	return s
 }
 
 func (s *sseserver) Done() iface.ISseServer {
-	return s.server
+	return s.server.Done()
 }
