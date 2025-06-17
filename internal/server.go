@@ -119,6 +119,7 @@ func (s *Server) SubscribeHandler() http.HandlerFunc {
 				s.sendHeartbeat(w, flusher)
 
 			case <-r.Context().Done():
+				log.Printf("sse %s Done", client.ID)
 				return
 			}
 		}
@@ -166,7 +167,7 @@ func (s *Server) eventLoop() {
 				s.registerFn(s, client)
 			}
 			s.clientsMutex.Unlock()
-			//log.Printf("iface.Client %s connected", client.ID)
+			log.Printf("iface.Client %s connected", client.ID)
 
 		case clientID := <-s.unsubscribeChan:
 			s.clientsMutex.Lock()
@@ -178,7 +179,7 @@ func (s *Server) eventLoop() {
 				delete(s.clients, clientID)
 			}
 			s.clientsMutex.Unlock()
-			//log.Printf("iface.Client %s disconnected", clientID)
+			log.Printf("iface.Client %s disconnected", clientID)
 
 		case event := <-s.broadcastChan:
 			s.clientsMutex.RLock()

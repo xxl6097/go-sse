@@ -18,16 +18,15 @@
     document.addEventListener('DOMContentLoaded', function() {
         const status = document.getElementById('status');
         const messages = document.getElementById('messages');
-        let lastEventId = 0;
         // 创建 EventSource 实例
-        const eventSource = new EventSource('http://localhost:8080/events', {
-            headers: { 'Last-Event-ID': lastEventId }
-        });
+        const eventSource = new EventSource('http://localhost:8080/events');
 
         // 连接成功
         eventSource.onopen = function() {
             status.textContent = 'Connected';
             status.style.color = 'green';
+            const formattedFromTimestamp = new Date(Date.now()).toLocaleString();
+            console.log('onopen',formattedFromTimestamp)
         };
 
         // 接收到消息
@@ -56,8 +55,8 @@
         eventSource.onerror = function(error) {
             status.textContent = 'Connection Error';
             status.style.color = 'red';
-
-            console.error('EventSource failed:', error);
+            const formattedFromTimestamp = new Date(Date.now()).toLocaleString();
+            console.log('onerror',error,formattedFromTimestamp)
 
             // 尝试重新连接
             // setTimeout(function() {
