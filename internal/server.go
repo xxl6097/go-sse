@@ -256,6 +256,7 @@ func (b *Server) Stream(response string, interval time.Duration) {
 				ID:    strconv.Itoa(i + 1),
 				Event: "message",
 			}
+			log.Printf("Stream: %v", char)
 			b.Broadcast(event)
 			time.Sleep(interval)
 		}
