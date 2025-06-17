@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-type InvalidateType func(*http.Request) (bool, string)
+type InvalidateType func(*http.Request) (string, error)
 type ClientType func(ISseServer, *Client)
 
 // Event 表示一个 SSE 事件

@@ -66,9 +66,9 @@ func (s *Server) SubscribeHandler() http.HandlerFunc {
 		id := generateClientID()
 		// 校验连接合法性
 		if s.invalidateFn != nil {
-			ok, tempID := s.invalidateFn(r)
-			if !ok {
-				http.Error(w, "Streaming Unauthorized!", http.StatusUnauthorized)
+			tempID, err := s.invalidateFn(r)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusUnauthorized)
 				return
 			} else {
 				id = tempID
