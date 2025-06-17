@@ -239,9 +239,11 @@ func (s *Server) sendEvent(w http.ResponseWriter, flusher http.Flusher, event if
 
 // sendHeartbeat 发送心跳消息以保持连接活跃
 func (s *Server) sendHeartbeat(w http.ResponseWriter, flusher http.Flusher) {
-	if _, err := w.Write([]byte(": heartbeat\n\n")); err != nil {
+	if n, err := w.Write([]byte(": heartbeat\n\n")); err != nil {
 		log.Printf("Write error: %v", err)
 		return
+	} else {
+		log.Printf("heartbeat: %v", n)
 	}
 	flusher.Flush()
 }
