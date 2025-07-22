@@ -77,10 +77,12 @@ func (s *Server) SubscribeHandler() http.HandlerFunc {
 
 		// 创建新客户端
 		client := &isse.Client{
-			ID:        id,
-			GroupID:   r.Header.Get("Sse-Event-GroupID"),
-			SendChan:  make(chan isse.Event, 100),
-			CloseChan: make(chan struct{}),
+			ID:         id,
+			GroupID:    r.Header.Get("Sse-Event-GroupID"),
+			IpAddress:  r.Header.Get("Sse-Event-IP-Address"),
+			MacAddress: r.Header.Get("Sse-Event-MAC-Address"),
+			SendChan:   make(chan isse.Event, 100),
+			CloseChan:  make(chan struct{}),
 		}
 
 		// 注册客户端
@@ -253,9 +255,9 @@ func (b *Server) Stream(response string, interval time.Duration) {
 	go func() {
 		for i, char := range response {
 			event := isse.Event{
-				Data:  string(char),
-				ID:    strconv.Itoa(i + 1),
-				Event: "message",
+				Payload: string(char),
+				ID:      strconv.Itoa(i + 1),
+				Event:   "message",
 			}
 			log.Printf("Stream: %v", string(char))
 			b.Broadcast(event)
