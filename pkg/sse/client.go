@@ -79,6 +79,8 @@ func (c *Client) connect() {
 				case line == "" && data != "":
 					log.Printf("[%s] %s", eventType, data)
 					data, eventType = "", ""
+				case line == "Unauthorized":
+					log.Printf("[%s] %s", eventType, line)
 				}
 			}
 			resp.Body.Close()
