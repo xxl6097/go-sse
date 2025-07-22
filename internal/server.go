@@ -2,7 +2,7 @@ package internal
 
 import (
 	"encoding/json"
-	"github.com/xxl6097/go-sse/pkg/sse/iface"
+	"github.com/xxl6097/go-sse/pkg/sse/isse"
 	"log"
 	"net/http"
 	"strconv"
@@ -13,16 +13,16 @@ import (
 
 // Server 管理所有 SSE 连接和事件广播
 type Server struct {
-	clients         map[string]*iface.Client
+	clients         map[string]*isse.Client
 	clientsMutex    sync.RWMutex
-	subscribeChan   chan *iface.Client
-	invalidateFn    iface.InvalidateType
-	registerFn      iface.ClientType
-	unregisterFn    iface.ClientType
+	subscribeChan   chan *isse.Client
+	invalidateFn    isse.InvalidateType
+	registerFn      isse.ClientType
+	unregisterFn    isse.ClientType
 	unsubscribeChan chan string
-	broadcastChan   chan iface.Event
-	p2pChan         chan iface.Event
-	groupChan       chan iface.Event
+	broadcastChan   chan isse.Event
+	p2pChan         chan isse.Event
+	groupChan       chan isse.Event
 }
 
 func (s *Server) Handler() http.HandlerFunc {
@@ -32,12 +32,12 @@ func (s *Server) Handler() http.HandlerFunc {
 // NewServer 创建一个新的 SSE 服务器实例
 func NewServer() *Server {
 	this := Server{
-		clients:         make(map[string]*iface.Client),
-		subscribeChan:   make(chan *iface.Client),
+		clients:         make(map[string]*isse.Client),
+		subscribeChan:   make(chan *isse.Client),
 		unsubscribeChan: make(chan string),
-		broadcastChan:   make(chan iface.Event),
-		p2pChan:         make(chan iface.Event),
-		groupChan:       make(chan iface.Event),
+		broadcastChan:   make(chan isse.Event),
+		p2pChan:         make(chan isse.Event),
+		groupChan:       make(chan isse.Event),
 		registerFn:      nil,
 		invalidateFn:    nil,
 		unregisterFn:    nil,
@@ -45,12 +45,12 @@ func NewServer() *Server {
 	return &this
 }
 
-func (s *Server) Done() iface.ISseServer {
+func (s *Server) Done() isse.ISseServer {
 	go s.eventLoop()
 	return s
 }
 
-func (s *Server) GetClients() map[string]*iface.Client {
+func (s *Server) GetClients() map[string]*isse.Client {
 	return s.clients
 }
 
@@ -76,10 +76,10 @@ func (s *Server) SubscribeHandler() http.HandlerFunc {
 		}
 
 		// 创建新客户端
-		client := &iface.Client{
+		client := &isse.Client{
 			ID:        id,
 			GroupID:   r.Header.Get("Sse-Event-GroupID"),
-			SendChan:  make(chan iface.Event, 100),
+			SendChan:  make(chan isse.Event, 100),
 			CloseChan: make(chan struct{}),
 		}
 
@@ -126,33 +126,33 @@ func (s *Server) SubscribeHandler() http.HandlerFunc {
 	}
 }
 
-func (s *Server) InvalidateFun(fn iface.InvalidateType) *Server {
+func (s *Server) InvalidateFun(fn isse.InvalidateType) *Server {
 	s.invalidateFn = fn
 	return s
 }
 
-func (s *Server) Register(fn iface.ClientType) *Server {
+func (s *Server) Register(fn isse.ClientType) *Server {
 	s.registerFn = fn
 	return s
 }
 
-func (s *Server) UnRegister(fn iface.ClientType) *Server {
+func (s *Server) UnRegister(fn isse.ClientType) *Server {
 	s.unregisterFn = fn
 	return s
 }
 
 // Broadcast 向所有客户端广播事件
-func (s *Server) Broadcast(event iface.Event) {
+func (s *Server) Broadcast(event isse.Event) {
 	s.broadcastChan <- event
 }
 
 // Send 向客户端发送数据
-func (s *Server) Send(event iface.Event) {
+func (s *Server) Send(event isse.Event) {
 	s.p2pChan <- event
 }
 
 // SendToGroup 向一组客户端发送数据
-func (s *Server) SendToGroup(event iface.Event) {
+func (s *Server) SendToGroup(event isse.Event) {
 	s.groupChan <- event
 }
 
@@ -224,7 +224,7 @@ func (s *Server) eventLoop() {
 }
 
 // sendEvent 向客户端发送 SSE 事件
-func (s *Server) sendEvent(w http.ResponseWriter, flusher http.Flusher, event iface.Event) {
+func (s *Server) sendEvent(w http.ResponseWriter, flusher http.Flusher, event isse.Event) {
 	data, e := json.Marshal(event)
 	if e != nil {
 		log.Printf("Error marshaling event: %v", e)
@@ -252,7 +252,7 @@ func (s *Server) sendHeartbeat(w http.ResponseWriter, flusher http.Flusher) {
 func (b *Server) Stream(response string, interval time.Duration) {
 	go func() {
 		for i, char := range response {
-			event := iface.Event{
+			event := isse.Event{
 				Data:  string(char),
 				ID:    strconv.Itoa(i + 1),
 				Event: "message",
@@ -261,7 +261,7 @@ func (b *Server) Stream(response string, interval time.Duration) {
 			b.Broadcast(event)
 			time.Sleep(interval)
 		}
-		b.Broadcast(iface.Event{Event: "end"})
+		b.Broadcast(isse.Event{Event: "end"})
 	}()
 }
 
