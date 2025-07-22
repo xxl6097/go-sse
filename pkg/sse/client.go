@@ -12,6 +12,7 @@ type Client struct {
 	URL                string
 	username, password string
 	fn                 func(string)
+	headerFn           func(*http.Header)
 	done               chan struct{}
 }
 
@@ -26,11 +27,18 @@ func (c *Client) BasicAuth(username, password string) *Client {
 }
 
 func (c *Client) ListenFunc(fn func(string)) *Client {
+	c.fn = fn
 	return c
 }
 
-func (c *Client) Done() {
+func (c *Client) Header(fn func(*http.Header)) *Client {
+	c.headerFn = fn
+	return c
+}
+
+func (c *Client) Done() *Client {
 	go c.connect()
+	return c
 }
 
 func (c *Client) Close() {
@@ -45,6 +53,9 @@ func (c *Client) connect() {
 		default:
 			req, _ := http.NewRequest("GET", c.URL, nil)
 			req.SetBasicAuth(c.username, c.password)
+			if c.headerFn != nil {
+				c.headerFn(&req.Header)
+			}
 			req.Header.Set("Accept", "text/event-stream")
 			client := &http.Client{Timeout: 0} // 无超时限制
 			resp, err := client.Do(req)
