@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"github.com/xxl6097/go-sse/pkg/sse"
 	"github.com/xxl6097/go-sse/pkg/sse/iface"
@@ -76,7 +77,7 @@ func main() {
 	log.Println("Shutting down server...")
 
 	// 优雅关闭服务器
-	if err := server.Shutdown(nil); err != nil {
+	if err := server.Shutdown(context.Background()); err != nil {
 		log.Fatal("Server forced to shutdown:", err)
 	}
 	log.Println("Server exiting")
