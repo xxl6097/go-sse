@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/xxl6097/go-sse/pkg/sse/isse"
 	"log"
@@ -45,8 +46,8 @@ func NewServer() *Server {
 	return &this
 }
 
-func (s *Server) Done() isse.ISseServer {
-	go s.eventLoop()
+func (s *Server) Done(ctx context.Context) isse.ISseServer {
+	go s.eventLoop(ctx)
 	return s
 }
 
@@ -159,9 +160,20 @@ func (s *Server) SendToGroup(event isse.Event) {
 }
 
 // eventLoop 处理客户端订阅、取消订阅和事件广播
-func (s *Server) eventLoop() {
+func (s *Server) eventLoop(ctx context.Context) {
 	for {
 		select {
+		case <-ctx.Done():
+			s.clientsMutex.Lock()
+			for _, client := range s.clients {
+				close(client.SendChan) // 关闭所有客户端 channel
+				if s.unregisterFn != nil {
+					s.unregisterFn(s, client)
+				}
+			}
+			s.clients = make(map[string]*isse.Client) // 清空客户端列表
+			s.clientsMutex.Unlock()
+			return
 		case client := <-s.subscribeChan:
 			s.clientsMutex.Lock()
 			s.clients[client.ID] = client

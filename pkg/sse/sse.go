@@ -1,6 +1,7 @@
 package sse
 
 import (
+	"context"
 	"github.com/xxl6097/go-sse/internal"
 	"github.com/xxl6097/go-sse/pkg/sse/isse"
 )
@@ -30,6 +31,6 @@ func (s *sseserver) UnRegister(fn isse.ClientType) *sseserver {
 	return s
 }
 
-func (s *sseserver) Done() isse.ISseServer {
-	return s.server.Done()
+func (s *sseserver) Done(ctx context.Context) isse.ISseServer {
+	return s.server.Done(ctx)
 }
